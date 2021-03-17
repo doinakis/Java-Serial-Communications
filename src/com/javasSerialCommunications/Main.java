@@ -133,6 +133,13 @@ public class Main {
         return responseTime;
     }
 
+    /**
+     * Method that requests an image (Error free or with Errors) from the ithaki server
+     * @param modem a modem class
+     * @param imageCode the image code for the particular date and time provided by ithaki lab
+     * @param imgLocation the location to store the image
+     * @throws IOException throw exception if there is an error writing the image
+     */
     public static void getImage(Modem modem,String imageCode,String imgLocation) throws IOException {
         File image = new File(imgLocation);
         FileOutputStream fos = new FileOutputStream(image);
