@@ -2,13 +2,9 @@ package com.javasSerialCommunications;
 
 import ithakimodem.*;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,11 +17,10 @@ public class Main {
         String modemName = "ithaki";
         //int echoExpTime = 4;
         String imageCode = "G3034\r";
-        int kappa=217;
-        byte[] yolo = ByteBuffer.allocate(4).putInt(kappa).array();
+        String imgLocation = "./image.jpg";
         //modem.setTimeout(2000);
         openModem(modem,modemName);
-        getImage(modem,imageCode);
+        getImage(modem,imageCode,imgLocation);
         //List<Long> times = echoPacketResponseTime(modem,echoCode,echoExpTime);
         modem.close();
 
@@ -105,8 +100,10 @@ public class Main {
     public static long getEchoPacket(Modem modem, String echoCode){
 
         long responseTime=0L;
+        char[] startSequence = {'P','S','T','A','R','T'};
         char[] stopSequence = {'P','S','T','O','P'};
         int characterReceived,counter=0;
+        boolean startCorrect;
         try{
             if (!modem.write(echoCode.getBytes()))
                 throw new customExceptionMessage("Could not request packet from server.");
@@ -136,15 +133,12 @@ public class Main {
         return responseTime;
     }
 
-    public static void getImage(Modem modem,String imageCode) throws IOException {
-        File file = new File("./image.jpg");
-        FileOutputStream fos = new FileOutputStream(file);
+    public static void getImage(Modem modem,String imageCode,String imgLocation) throws IOException {
+        File image = new File(imgLocation);
+        FileOutputStream fos = new FileOutputStream(image);
         int characterReceived,counter = 0;
         int[] endSequence = {255,217};
-        byte[] charBytes;
-        List<Byte> byteList = new ArrayList<>();
 
-        List<Integer> image = new ArrayList<>();
         try{
             if (!modem.write(imageCode.getBytes()))
                 throw new customExceptionMessage("Could not request image from server.");
