@@ -16,12 +16,17 @@ public class Main {
         Modem modem = new Modem(80000);
         String modemName = "ithaki";
         //int echoExpTime = 4;
-        String imageCode = "G3034\r";
-        String imgLocation = "./image.jpg";
+        String imageCode = "M3075\r";
+        String cam = "PTZ"; // or CAM = "FIX" or "PTZ" or ""
+        String dir = "R";
+        String size = "L";
+        String imgLocation = "./imgPTZRL.jpg";
+        String test;
+        //test = constructImageCode(imageCode,cam,dir,size);
         //modem.setTimeout(2000);
         openModem(modem,modemName);
-        getImage(modem,imageCode,imgLocation);
-        //List<Long> times = echoPacketResponseTime(modem,echoCode,echoExpTime);
+        //getImage(modem,imageCode,cam,dir,size,imgLocation);
+        List<Long> times = echoPacketResponseTime(modem,"E7936\r",1);
         modem.close();
 
     }
@@ -102,8 +107,8 @@ public class Main {
         long responseTime=0L;
         char[] startSequence = {'P','S','T','A','R','T'};
         char[] stopSequence = {'P','S','T','O','P'};
-        int characterReceived,counter=0;
-        boolean startCorrect;
+        int characterReceived,counter=0,iterationCounter=0;
+        boolean startCorrect=true;
         try{
             if (!modem.write(echoCode.getBytes()))
                 throw new customExceptionMessage("Could not request packet from server.");
@@ -120,6 +125,11 @@ public class Main {
                 if (characterReceived == -1) throw new customExceptionMessage("Modem disconnected during packet request");
                 if ((char) characterReceived == stopSequence[counter]) counter += 1;
                 else counter = 0;
+                if(iterationCounter < startSequence.length){
+                    if(characterReceived != startSequence[iterationCounter]) startCorrect = false;
+                    if(!startCorrect) throw new customExceptionMessage("Unexpected packet format");
+                    iterationCounter++;
+                }
                 if (counter == stopSequence.length){
                     responseTime = System.currentTimeMillis() - responseTime;
                 }
@@ -134,16 +144,23 @@ public class Main {
     }
 
     /**
-     * Method that requests an image (Error free or with Errors) from the ithaki server
-     * @param modem a modem class
-     * @param imageCode the image code for the particular date and time provided by ithaki lab
-     * @param imgLocation the location to store the image
-     * @throws IOException throw exception if there is an error writing the image
+     *
+     * @param modem         a modem class
+     * @param imageCode     the image code for the particular date and time provided by ithaki lab
+     * @param cam           parameter for which camera to be used
+     * @param dir           direction of the camera dir = "R" or "L" or "U" or "D"(right,left,up,down)(applies only for cam = "PTZ")
+     * @param size          size of the requested image size = "L" or "R" (applies only for cam = "PTZ")
+     * @param imgLocation
+     * @throws IOException
      */
-    public static void getImage(Modem modem,String imageCode,String imgLocation) throws IOException {
+    public static void getImage(Modem modem,String imageCode,String cam,String dir,String size,String imgLocation) throws IOException {
+
+        imageCode = constructImageCode(imageCode,cam,dir,size);
+        boolean startCorrect=true;
         File image = new File(imgLocation);
         FileOutputStream fos = new FileOutputStream(image);
-        int characterReceived,counter = 0;
+        int characterReceived,counter = 0,iterationCounter=0;
+        int[] startSequence = {255,216};
         int[] endSequence = {255,217};
 
         try{
@@ -156,12 +173,21 @@ public class Main {
 
         for(;;){
             try{
+
                 characterReceived = modem.read();
                 fos.write((byte) characterReceived);
+                if(iterationCounter < startSequence.length){
+                    if(characterReceived != startSequence[iterationCounter]) startCorrect = false;
+                    if(!startCorrect) throw new customExceptionMessage("Unexpected image format");
+                    iterationCounter++;
+                }
+
+
                 if (characterReceived == -1) throw new customExceptionMessage("Modem disconnected during image request");
                 if (characterReceived == endSequence[counter]) counter += 1;
                 else counter = 0;
-                System.out.println(characterReceived);
+
+
 
             }catch (Exception e){
                 System.out.println(e);
@@ -173,6 +199,42 @@ public class Main {
             }
         }
 
+    }
+
+    /**
+     *
+     * @param imageCode the requested image code
+     * @param cam   the code of the camera
+     * @param dir   the direction (L,R,U,D)
+     * @param size  the desirable size of the image (S,L)
+     * @return      returns a string with the code and the desirable image parameters
+     */
+    public static String constructImageCode(String imageCode,String cam,String dir,String size){
+        boolean bool = dir.equals("L") || dir.equals("U") || dir.equals("R") || dir.equals("D");
+        switch(cam){
+            case "PTZ":
+                cam = "CAM=PTZ\r";
+                if(bool) dir = "DIR=" + dir + "\r";
+                else dir = "";
+                if(size.equals("S") || size.equals("L")) size = "SIZE=" + size + "\r";
+                else size = "";
+                break;
+            case "FIX":
+                cam = "CAM=FIX\r";
+                dir = "";
+                size = "";
+                break;
+            default:
+                cam = "CAM=" + cam + "\r";
+                if(bool) dir = "DIR=" + dir + "\r";
+                else dir = "";
+                if((size.equals("S") || size.equals("L"))) size = "SIZE=" + size + "\r";
+                else size = "";
+                break;
+        }
+        imageCode = imageCode + cam + dir + size;
+
+        return imageCode;
     }
 }
 
