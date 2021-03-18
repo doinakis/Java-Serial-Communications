@@ -15,18 +15,19 @@ public class Main {
 
         Modem modem = new Modem(80000);
         String modemName = "ithaki";
-        //int echoExpTime = 4;
-        String imageCode = "M3075\r";
+//        int echoExpTime = 4;
+        String imageCode = "M3263";
         String cam = "PTZ"; // or CAM = "FIX" or "PTZ" or ""
-        String dir = "R";
-        String size = "L";
-        String imgLocation = "./imgPTZRL.jpg";
-        String test;
-        //test = constructImageCode(imageCode,cam,dir,size);
+        String dir = "U";
+        String size = "S";
+        String imgLocation = "./imgPTZUL.jpg";
+        constructImageCode(imageCode,cam,dir,size);
+        String gpsCode = "P9819";
         //modem.setTimeout(2000);
         openModem(modem,modemName);
-        //getImage(modem,imageCode,cam,dir,size,imgLocation);
-        List<Long> times = echoPacketResponseTime(modem,"E7936\r",1);
+        getGPSMark(modem,gpsCode);
+//        getImage(modem,imageCode,cam,dir,size,imgLocation);
+//        //List<Long> times = echoPacketResponseTime(modem,"E7936\r",1);
         modem.close();
 
     }
@@ -41,7 +42,6 @@ public class Main {
 
             if(!modem.open(modemName)) throw new customExceptionMessage("Could not open to modem.");
             printHelloMessage(modem);
-
         }catch(Exception e){
             System.out.println(e);
         }
@@ -90,11 +90,6 @@ public class Main {
         }
         return responseTimes;
     }
-    /* Method that requests a single echo packet from the ithaki server
-    * Input arguments:
-    *   modem: A modem class
-    *   echoCode: String, the echo code for the particular date and time provided by ithaki lab
-    */
 
     /**
      * Method that requests a single echo packet from the ithaki server
@@ -118,7 +113,6 @@ public class Main {
             System.out.println(e);
             System.exit(1);
         }
-
         for(;;){
             try{
                 characterReceived = modem.read();
@@ -150,19 +144,18 @@ public class Main {
      * @param cam           parameter for which camera to be used
      * @param dir           direction of the camera dir = "R" or "L" or "U" or "D"(right,left,up,down)(applies only for cam = "PTZ")
      * @param size          size of the requested image size = "L" or "R" (applies only for cam = "PTZ")
-     * @param imgLocation
-     * @throws IOException
+     * @param imgLocation   the location to store the image
+     * @throws IOException  throws IO exception if there is an error creating the file
      */
     public static void getImage(Modem modem,String imageCode,String cam,String dir,String size,String imgLocation) throws IOException {
 
         imageCode = constructImageCode(imageCode,cam,dir,size);
         boolean startCorrect=true;
-        File image = new File(imgLocation);
-        FileOutputStream fos = new FileOutputStream(image);
         int characterReceived,counter = 0,iterationCounter=0;
         int[] startSequence = {255,216};
         int[] endSequence = {255,217};
-
+        File image = new File(imgLocation);
+        FileOutputStream fos = new FileOutputStream(image);
         try{
             if (!modem.write(imageCode.getBytes()))
                 throw new customExceptionMessage("Could not request image from server.");
@@ -170,10 +163,8 @@ public class Main {
             System.out.println(e);
             System.exit(1);
         }
-
         for(;;){
             try{
-
                 characterReceived = modem.read();
                 fos.write((byte) characterReceived);
                 if(iterationCounter < startSequence.length){
@@ -181,14 +172,9 @@ public class Main {
                     if(!startCorrect) throw new customExceptionMessage("Unexpected image format");
                     iterationCounter++;
                 }
-
-
                 if (characterReceived == -1) throw new customExceptionMessage("Modem disconnected during image request");
                 if (characterReceived == endSequence[counter]) counter += 1;
                 else counter = 0;
-
-
-
             }catch (Exception e){
                 System.out.println(e);
                 System.exit(1);
@@ -198,11 +184,10 @@ public class Main {
                 break;
             }
         }
-
     }
 
     /**
-     *
+     * Method that constructs an image code given the CAM,DIR,SIZE parameters
      * @param imageCode the requested image code
      * @param cam   the code of the camera
      * @param dir   the direction (L,R,U,D)
@@ -213,28 +198,82 @@ public class Main {
         boolean bool = dir.equals("L") || dir.equals("U") || dir.equals("R") || dir.equals("D");
         switch(cam){
             case "PTZ":
-                cam = "CAM=PTZ\r";
-                if(bool) dir = "DIR=" + dir + "\r";
+                cam = "CAM=PTZ";
+                if(bool) dir = "DIR=" + dir;
                 else dir = "";
-                if(size.equals("S") || size.equals("L")) size = "SIZE=" + size + "\r";
+                if(size.equals("S") || size.equals("L")) size = "SIZE=" + size;
                 else size = "";
                 break;
             case "FIX":
-                cam = "CAM=FIX\r";
+                cam = "CAM=FIX";
                 dir = "";
                 size = "";
                 break;
             default:
-                cam = "CAM=" + cam + "\r";
-                if(bool) dir = "DIR=" + dir + "\r";
+                cam = "CAM=" + cam;
+                if(bool) dir = "DIR=" + dir;
                 else dir = "";
-                if((size.equals("S") || size.equals("L"))) size = "SIZE=" + size + "\r";
+                if((size.equals("S") || size.equals("L"))) size = "SIZE=" + size;
                 else size = "";
                 break;
         }
-        imageCode = imageCode + cam + dir + size;
+        imageCode = imageCode + cam + dir + size + "\r";
 
         return imageCode;
+    }
+
+    public static void getGPSMark(Modem modem,String gpsCode){
+
+        char[] startSequence = "START ITHAKI GPS TRACKING\r\n".toCharArray();
+        char[] stopSequence = "STOP ITHAKI GPS TRACKING\r\n".toCharArray();
+        List<String> yolo = new ArrayList<>();
+        gpsCode = constructGPSCode(gpsCode,"1000016",yolo);
+        int characterReceived,counter=0,iterationCounter=0;
+        boolean startCorrect=true;
+        try{
+            if (!modem.write(gpsCode.getBytes()))
+                throw new customExceptionMessage("Could not request packet from server.");
+        }catch (Exception e){
+            System.out.println(e);
+            System.exit(1);
+        }
+        for(;;){
+            try{
+                characterReceived = modem.read();
+                if (characterReceived == -1) throw new customExceptionMessage("Modem disconnected during packet request");
+                if ((char) characterReceived == stopSequence[counter]) counter += 1;
+                else counter = 0;
+                System.out.print((char)characterReceived);
+                if(iterationCounter < startSequence.length){
+                    if(characterReceived != startSequence[iterationCounter]) startCorrect = false;
+                    if(!startCorrect) throw new customExceptionMessage("Unexpected packet format");
+                    iterationCounter++;
+                }
+            }catch (Exception e){
+
+                System.out.println(e);
+                System.exit(1);
+            }
+            if (counter == stopSequence.length) break;
+        }
+    }
+
+    /**
+     * Construct a gps code to send to the ithaki server
+     * @param gpsCode   the requested gps code
+     * @param R         gps marks from a certain route (e.g R="XPPPLL")
+     * @param T         gps marks jpeg image           (e.g T="AABBCCDDEEZZ")
+     * @return          string with the constructed code
+     */
+    public static String constructGPSCode(String gpsCode,String R,List<String> T){
+        gpsCode = gpsCode + "R=" + R;
+        if(!T.isEmpty()){
+            for (int i = 0; i < T.size(); i++) {
+                gpsCode = gpsCode + "T=" + T.get(i);
+            }
+        }
+        gpsCode = gpsCode + "\r";
+        return gpsCode;
     }
 }
 
