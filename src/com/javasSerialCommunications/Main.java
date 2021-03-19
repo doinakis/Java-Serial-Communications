@@ -3,6 +3,7 @@ package com.javasSerialCommunications;
 import ithakimodem.*;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -22,7 +23,7 @@ public class Main {
         String size = "S";
         String imgLocation = "./imgPTZUL.jpg";
         constructImageCode(imageCode,cam,dir,size);
-        String gpsCode = "P9819";
+        String gpsCode = "P6161";
         //modem.setTimeout(2000);
         openModem(modem,modemName);
         getGPSMark(modem,gpsCode);
@@ -222,27 +223,31 @@ public class Main {
         return imageCode;
     }
 
-    public static void getGPSMark(Modem modem,String gpsCode){
+    public static void getGPSMark(Modem modem,String gpsCode) throws IOException {
 
         char[] startSequence = "START ITHAKI GPS TRACKING\r\n".toCharArray();
         char[] stopSequence = "STOP ITHAKI GPS TRACKING\r\n".toCharArray();
-        List<String> yolo = new ArrayList<>();
-        gpsCode = constructGPSCode(gpsCode,"1000016",yolo);
-        int characterReceived,counter=0,iterationCounter=0;
+        List<String> R = new ArrayList<>();
+        R.add("1000080");
+        String gpsMarkCode = constructGPSCode(gpsCode,R,true);
+        int characterReceived,stopCounter=0,iterationCounter=0;
         boolean startCorrect=true;
         try{
-            if (!modem.write(gpsCode.getBytes()))
+            if (!modem.write(gpsMarkCode.getBytes()))
                 throw new customExceptionMessage("Could not request packet from server.");
         }catch (Exception e){
             System.out.println(e);
             System.exit(1);
         }
+        String gpsMark = new String();
+
         for(;;){
             try{
                 characterReceived = modem.read();
                 if (characterReceived == -1) throw new customExceptionMessage("Modem disconnected during packet request");
-                if ((char) characterReceived == stopSequence[counter]) counter += 1;
-                else counter = 0;
+                if ((char) characterReceived == stopSequence[stopCounter]) stopCounter += 1;
+                else stopCounter = 0;
+                gpsMark += (char) characterReceived;
                 System.out.print((char)characterReceived);
                 if(iterationCounter < startSequence.length){
                     if(characterReceived != startSequence[iterationCounter]) startCorrect = false;
@@ -250,26 +255,90 @@ public class Main {
                     iterationCounter++;
                 }
             }catch (Exception e){
-
                 System.out.println(e);
                 System.exit(1);
             }
-            if (counter == stopSequence.length) break;
+            if (stopCounter == stopSequence.length) break;
         }
+        gpsMark = gpsMark.substring(startSequence.length,gpsMark.length()-stopSequence.length);
+        List<String> latitude = new ArrayList<>();
+        List<String> longitude = new ArrayList<>();
+        List<String> T = new ArrayList<>();
+        int minutesLat,minutesLon;
+        int secondsLat,secondsLon;
+        int k =gpsMark.split("\r\n").length;
+        int i = 0;
+        for(int c = 0;c < k;c=c+10){
+            latitude.add(gpsMark.split("\r\n")[c].split(",")[2]);
+            longitude.add(gpsMark.split("\r\n")[c].split(",")[4]);
+            minutesLat = (int)Double.parseDouble(latitude.get(i).substring(2));
+            secondsLat = (int)Math.round((Double.parseDouble(latitude.get(i).substring(2)) - minutesLat) * 60);
+            minutesLon = (int)Double.parseDouble(longitude.get(i).substring(3));
+            secondsLon = (int)Math.round((Double.parseDouble(longitude.get(i).substring(3)) - minutesLon) * 60);
+            T.add(longitude.get(i).substring(1,3) + minutesLon + secondsLon + latitude.get(i).substring(0,2) + minutesLat  + secondsLat);
+            i++;
+        }
+        String gpsImgCode = constructGPSCode(gpsCode,T,false);
+        getGPSImage(modem,gpsImgCode);
+
+    }
+
+    public static void getGPSImage(Modem modem,String gpsImgCode) throws IOException {
+
+        boolean startCorrect=true;
+        int characterReceived,counter = 0,iterationCounter=0;
+        int[] startSequence = {255,216};
+        int[] endSequence = {255,217};
+        File image = new File("./gpsimg.jpg");
+        FileOutputStream fos = new FileOutputStream(image);
+        try{
+            if (!modem.write(gpsImgCode.getBytes()))
+                throw new customExceptionMessage("Could not request image from server.");
+        }catch (Exception e){
+            System.out.println(e);
+            System.exit(1);
+        }
+        for(;;){
+            try{
+                characterReceived = modem.read();
+                fos.write((byte) characterReceived);
+                if(iterationCounter < startSequence.length){
+                    if(characterReceived != startSequence[iterationCounter]) startCorrect = false;
+                    if(!startCorrect) throw new customExceptionMessage("Unexpected image format");
+                    iterationCounter++;
+                }
+                if (characterReceived == -1) throw new customExceptionMessage("Modem disconnected during image request");
+                if (characterReceived == endSequence[counter]) counter += 1;
+                else counter = 0;
+            }catch (Exception e){
+                System.out.println(e);
+                System.exit(1);
+            }
+            if (counter == endSequence.length){
+                fos.close();
+                break;
+            }
+        }
+
     }
 
     /**
-     * Construct a gps code to send to the ithaki server
+     *
      * @param gpsCode   the requested gps code
-     * @param R         gps marks from a certain route (e.g R="XPPPLL")
-     * @param T         gps marks jpeg image           (e.g T="AABBCCDDEEZZ")
-     * @return          string with the constructed code
+     * @param R         gps marks from a certain route (e.g R="XPPPLL") or gps marks jpeg image (e.g T="AABBCCDDEEZZ")
+     * @param type      if type is true then parameter R is included in the code, otherwise R is a list with marks for the image
+     * @return
      */
-    public static String constructGPSCode(String gpsCode,String R,List<String> T){
-        gpsCode = gpsCode + "R=" + R;
-        if(!T.isEmpty()){
-            for (int i = 0; i < T.size(); i++) {
-                gpsCode = gpsCode + "T=" + T.get(i);
+    public static String constructGPSCode(String gpsCode,List<String> R,boolean type){
+        if(type){
+            if (!R.isEmpty()) {
+                gpsCode = gpsCode + "R=" + R.get(0);
+            }
+        }else{
+            if (!R.isEmpty()) {
+                for (int i = 0; i < R.size(); i++) {
+                    gpsCode = gpsCode + "T=" + R.get(i);
+                }
             }
         }
         gpsCode = gpsCode + "\r";
