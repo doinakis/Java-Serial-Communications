@@ -20,14 +20,14 @@ public class Main {
          * Echo packet response times experiment
          */
         int echoExpTime = 1;
-        String echoCode = "E6485\r";
+        String echoCode = "E7349\r";
         List<Long> times = echoPacketResponseTime(modem,echoCode,echoExpTime);
 
         /*
          * Image request experiment
          */
         // Error free
-        String imageCode = "M5211";
+        String imageCode = "M6915";
         String cam = ""; // or CAM = "FIX" or "PTZ" or ""
         String dir = "";
         String size = "";
@@ -36,7 +36,7 @@ public class Main {
         getImage(modem,imageCode,cam,dir,size,imgLocation);
 
         // With errors
-        imageCode = "G4927";
+        imageCode = "G8174";
         cam = "";
         dir = "";
         size = "";
@@ -46,11 +46,18 @@ public class Main {
         /*
          * Gps request experiment
          */
-        String gpsCode = "P4263";
+        String gpsCode = "P6982";
         List<String> R = new ArrayList<>();
         R.add("1000080");
         imgLocation = "./gpsImage.jpg";
         getGPSMark(modem,gpsCode,R,imgLocation);
+
+        /*
+         * Automatic repeat request
+         */
+        String ackCode = "Q2107\r";
+        String nackCode = "R3193\r";
+        int number = arqPacketExperiment(modem,ackCode,nackCode,echoExpTime);
 
         modem.close();
 
@@ -123,8 +130,8 @@ public class Main {
     public static long getEchoPacket(Modem modem, String echoCode){
 
         long responseTime=0L;
-        char[] startSequence = {'P','S','T','A','R','T'};
-        char[] stopSequence = {'P','S','T','O','P'};
+        char[] startSequence = "PSTART".toCharArray();
+        char[] stopSequence = "PSTOP".toCharArray();
         int characterReceived,stopCounter=0,iterationCounter=0;
         boolean startCorrect=true;
         try{
@@ -336,10 +343,69 @@ public class Main {
                     gpsCode = gpsCode + "T=" + s;
                 }
             }
-
         }
         gpsCode = gpsCode + "\r";
         return gpsCode;
+    }
+
+    public static int arqPacketExperiment(Modem modem,String ackCode,String nackCode,int time){
+        long timeElapsed,totalTime=0L,experimentTime=(long)time*60000;
+        boolean correctPacket = requestARQCode(modem,ackCode);
+        int numberOfFailed = 0;
+        while(totalTime < experimentTime){
+            timeElapsed = System.currentTimeMillis();
+            if(correctPacket) correctPacket = requestARQCode(modem,ackCode);
+            else{
+                correctPacket = requestARQCode(modem,nackCode);
+                numberOfFailed++;
+            }
+            timeElapsed = System.currentTimeMillis() - timeElapsed;
+            totalTime += timeElapsed;
+        }
+        return numberOfFailed;
+    }
+
+    public static boolean requestARQCode(Modem modem,String arqCode){
+        char[] startSequence = "PSTART".toCharArray();
+        char[] stopSequence = "PSTOP".toCharArray();
+        int characterReceived,stopCounter=0,iterationCounter=0;
+        boolean startCorrect=true;
+        String arqResponse = "";
+        try{
+            if (!modem.write(arqCode.getBytes()))
+                throw new customExceptionMessage("Could not request packet from server.");
+
+        }catch (Exception e){
+            System.out.println(e);
+            System.exit(1);
+        }
+        do{
+            try{
+                characterReceived = modem.read();
+                if (characterReceived == -1) throw new customExceptionMessage("Modem disconnected during packet request");
+                if ((char) characterReceived == stopSequence[stopCounter]) stopCounter += 1;
+                else stopCounter = 0;
+                arqResponse += (char)characterReceived;
+                if(iterationCounter < startSequence.length){
+                    if(characterReceived != startSequence[iterationCounter]) startCorrect = false;
+                    if(!startCorrect) throw new customExceptionMessage("Unexpected packet format");
+                    iterationCounter++;
+                }
+            }catch (Exception e){
+
+                System.out.println(e);
+                System.exit(1);
+            }
+        }while(stopCounter != stopSequence.length);
+
+        char[] coded = arqResponse.split(" ")[4].substring(1,17).toCharArray();
+        int fcs = Integer.parseInt(arqResponse.split(" ")[5]);
+        int codedFCS = 0;
+        for(int i = 0;i < coded.length;i++){
+            codedFCS = codedFCS ^ (int) coded[i];
+        }
+
+        return (codedFCS == fcs);
     }
 }
 
