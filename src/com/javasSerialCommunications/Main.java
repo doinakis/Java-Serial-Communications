@@ -49,7 +49,7 @@ public class Main {
         String gpsCode = "P4263";
         List<String> R = new ArrayList<>();
         R.add("1000080");
-        imgLocation = "./gpsImage";
+        imgLocation = "./gpsImage.jpg";
         getGPSMark(modem,gpsCode,R,imgLocation);
 
         modem.close();
