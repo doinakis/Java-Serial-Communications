@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.lang.Math.abs;
+
 
 public class Main {
 
@@ -16,48 +18,49 @@ public class Main {
         Modem modem = new Modem(80000);
         String modemName = "ithaki";
         openModem(modem,modemName);
-        /*
-         * Echo packet response times experiment
-         */
-        int echoExpTime = 1;
-        String echoCode = "E7349\r";
-        List<Long> times = echoPacketResponseTime(modem,echoCode,echoExpTime);
-
-        /*
-         * Image request experiment
-         */
-        // Error free
-        String imageCode = "M6915";
-        String cam = ""; // or CAM = "FIX" or "PTZ" or ""
-        String dir = "";
-        String size = "";
+//        /*
+//         * Echo packet response times experiment
+//         */
+//        int echoExpTime = 1;
+//        String echoCode = "E7349\r";
+//        List<Long> times = echoPacketResponseTime(modem,echoCode,echoExpTime);
+//
+//        /*
+//         * Image request experiment
+//         */
+//        // Error free
+//        String imageCode = "M6915";
+//        String cam = ""; // or CAM = "FIX" or "PTZ" or ""
+//        String dir = "";
+//        String size = "";
         String imgLocation = "./imgFIXErrorFree.jpg";
-        constructImageCode(imageCode,cam,dir,size);
-        getImage(modem,imageCode,cam,dir,size,imgLocation);
-
-        // With errors
-        imageCode = "G8174";
-        cam = "";
-        dir = "";
-        size = "";
-        imgLocation = "./imgFIXErrors.jpg";
-        getImage(modem,imageCode,cam,dir,size,imgLocation);
+//        constructImageCode(imageCode,cam,dir,size);
+//        getImage(modem,imageCode,cam,dir,size,imgLocation);
+//
+//        // With errors
+//        imageCode = "G8174";
+//        cam = "";
+//        dir = "";
+//        size = "";
+//        imgLocation = "./imgFIXErrors.jpg";
+//        getImage(modem,imageCode,cam,dir,size,imgLocation);
 
         /*
          * Gps request experiment
          */
-        String gpsCode = "P6982";
+        String gpsCode = "P5297";
         List<String> R = new ArrayList<>();
-        R.add("1000080");
+        R.add("1000099");
         imgLocation = "./gpsImage.jpg";
-        getGPSMark(modem,gpsCode,R,imgLocation);
+        int numberOfMarks = 9;
+        getGPSMark(modem,gpsCode,R,imgLocation,numberOfMarks);
 
-        /*
-         * Automatic repeat request
-         */
-        String ackCode = "Q2107\r";
-        String nackCode = "R3193\r";
-        int number = arqPacketExperiment(modem,ackCode,nackCode,echoExpTime);
+//        /*
+//         * Automatic repeat request
+//         */
+//        String ackCode = "Q2107\r";
+//        String nackCode = "R3193\r";
+//        int number = arqPacketExperiment(modem,ackCode,nackCode,echoExpTime);
 
         modem.close();
 
@@ -268,7 +271,7 @@ public class Main {
      * @param R             route parameters
      * @throws IOException  throws IO exception if there is an error creating the file
      */
-    public static void getGPSMark(Modem modem,String gpsCode,List<String> R,String imgLocation) throws IOException {
+    public static void getGPSMark(Modem modem,String gpsCode,List<String> R,String imgLocation,int numberOfMarks) throws IOException {
 
         char[] startSequence = "START ITHAKI GPS TRACKING\r\n".toCharArray();
         char[] stopSequence = "STOP ITHAKI GPS TRACKING\r\n".toCharArray();
@@ -310,15 +313,30 @@ public class Main {
         int secondsLat,secondsLon;
         int k =gpsMark.split("\r\n").length;
         int i = 0;
-        for(int c = 0;c < k;c=c+10){
-            latitude.add(gpsMark.split("\r\n")[c].split(",")[2]);
-            longitude.add(gpsMark.split("\r\n")[c].split(",")[4]);
-            minutesLat = (int)Double.parseDouble(latitude.get(i).substring(2));
-            secondsLat = (int)Math.round((Double.parseDouble(latitude.get(i).substring(2)) - minutesLat) * 60);
-            minutesLon = (int)Double.parseDouble(longitude.get(i).substring(3));
-            secondsLon = (int)Math.round((Double.parseDouble(longitude.get(i).substring(3)) - minutesLon) * 60);
-            T.add(longitude.get(i).substring(1,3) + minutesLon + secondsLon + latitude.get(i).substring(0,2) + minutesLat  + secondsLat);
-            i++;
+        double prevTime = 0.0;
+        double currTime;
+        String[] markSplit;
+        String test;
+        for(int c = 0;c < k;c++){
+            markSplit = gpsMark.split("\r\n")[c].split(",");
+            currTime = Double.parseDouble(markSplit[1].substring(0,2)) * 3600 + Double.parseDouble(markSplit[1].substring(2,4)) * 60 + Double.parseDouble(markSplit[1].substring(4));
+            currTime = currTime - prevTime;
+            if(currTime >= 4 && i < numberOfMarks){
+                latitude.add(markSplit[2]);
+                longitude.add(markSplit[4]);
+                secondsLat = (int)Math.round(Double.parseDouble(latitude.get(i).substring(4)) * 60);
+                secondsLon = (int)Math.round(Double.parseDouble(longitude.get(i).substring(5)) * 60);
+                test = longitude.get(i).substring(1,5) + secondsLon + latitude.get(i).substring(0,4) + secondsLat;
+                if(!T.contains(test)) {
+                    T.add(test);
+                    prevTime = currTime;
+                    i++;
+                }else{
+                    latitude.remove(i);
+                    longitude.remove(i);
+                }
+
+            }
         }
         String gpsImgCode = constructGPSCode(gpsCode,T,false);
         requestImage(modem,gpsImgCode,imgLocation);
