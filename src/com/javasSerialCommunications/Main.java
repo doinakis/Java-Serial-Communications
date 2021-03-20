@@ -3,7 +3,6 @@ package com.javasSerialCommunications;
 import ithakimodem.*;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,19 +15,42 @@ public class Main {
 
         Modem modem = new Modem(80000);
         String modemName = "ithaki";
-//        int echoExpTime = 4;
-        String imageCode = "M3263";
-        String cam = "PTZ"; // or CAM = "FIX" or "PTZ" or ""
-        String dir = "U";
-        String size = "S";
-        String imgLocation = "./imgPTZUL.jpg";
-        constructImageCode(imageCode,cam,dir,size);
-        String gpsCode = "P6161";
-        //modem.setTimeout(2000);
         openModem(modem,modemName);
-        getGPSMark(modem,gpsCode);
-//        getImage(modem,imageCode,cam,dir,size,imgLocation);
-//        //List<Long> times = echoPacketResponseTime(modem,"E7936\r",1);
+        /*
+         * Echo packet response times experiment
+         */
+        int echoExpTime = 1;
+        String echoCode = "E6485\r";
+        List<Long> times = echoPacketResponseTime(modem,echoCode,echoExpTime);
+
+        /*
+         * Image request experiment
+         */
+        // Error free
+        String imageCode = "M5211";
+        String cam = ""; // or CAM = "FIX" or "PTZ" or ""
+        String dir = "";
+        String size = "";
+        String imgLocation = "./imgFIXErrorFree.jpg";
+        constructImageCode(imageCode,cam,dir,size);
+        getImage(modem,imageCode,cam,dir,size,imgLocation);
+
+        // With errors
+        imageCode = "G4927";
+        cam = "";
+        dir = "";
+        size = "";
+        imgLocation = "./imgFIXErrors.jpg";
+        getImage(modem,imageCode,cam,dir,size,imgLocation);
+
+        /*
+         * Gps request experiment
+         */
+        String gpsCode = "P4263";
+        List<String> R = new ArrayList<>();
+        R.add("1000080");
+        getGPSMark(modem,gpsCode,R);
+
         modem.close();
 
     }
@@ -55,7 +77,7 @@ public class Main {
     public static void printHelloMessage(Modem modem){
         int characterReceived,counter=0;
         char[] endSequence = {'\r','\n','\n','\n'};
-        for(;;){
+        do {
             try{
                 characterReceived = modem.read();
 
@@ -68,8 +90,7 @@ public class Main {
                 System.out.println(e);
                 return;
             }
-            if (counter == endSequence.length) break;
-        }
+        }while(counter != endSequence.length);
     }
 
     /**
@@ -103,7 +124,7 @@ public class Main {
         long responseTime=0L;
         char[] startSequence = {'P','S','T','A','R','T'};
         char[] stopSequence = {'P','S','T','O','P'};
-        int characterReceived,counter=0,iterationCounter=0;
+        int characterReceived,stopCounter=0,iterationCounter=0;
         boolean startCorrect=true;
         try{
             if (!modem.write(echoCode.getBytes()))
@@ -114,18 +135,18 @@ public class Main {
             System.out.println(e);
             System.exit(1);
         }
-        for(;;){
+        do{
             try{
                 characterReceived = modem.read();
                 if (characterReceived == -1) throw new customExceptionMessage("Modem disconnected during packet request");
-                if ((char) characterReceived == stopSequence[counter]) counter += 1;
-                else counter = 0;
+                if ((char) characterReceived == stopSequence[stopCounter]) stopCounter += 1;
+                else stopCounter = 0;
                 if(iterationCounter < startSequence.length){
                     if(characterReceived != startSequence[iterationCounter]) startCorrect = false;
                     if(!startCorrect) throw new customExceptionMessage("Unexpected packet format");
                     iterationCounter++;
                 }
-                if (counter == stopSequence.length){
+                if (stopCounter == stopSequence.length){
                     responseTime = System.currentTimeMillis() - responseTime;
                 }
             }catch (Exception e){
@@ -133,13 +154,12 @@ public class Main {
                 System.out.println(e);
                 System.exit(1);
             }
-            if (counter == stopSequence.length) break;
-        }
+        }while(stopCounter != stopSequence.length);
         return responseTime;
     }
 
     /**
-     *
+     * Method that requests and saves an image requested from the ithaki server
      * @param modem         a modem class
      * @param imageCode     the image code for the particular date and time provided by ithaki lab
      * @param cam           parameter for which camera to be used
@@ -152,7 +172,7 @@ public class Main {
 
         imageCode = constructImageCode(imageCode,cam,dir,size);
         boolean startCorrect=true;
-        int characterReceived,counter = 0,iterationCounter=0;
+        int characterReceived,stopCounter = 0,iterationCounter=0;
         int[] startSequence = {255,216};
         int[] endSequence = {255,217};
         File image = new File(imgLocation);
@@ -164,7 +184,7 @@ public class Main {
             System.out.println(e);
             System.exit(1);
         }
-        for(;;){
+        do{
             try{
                 characterReceived = modem.read();
                 fos.write((byte) characterReceived);
@@ -174,26 +194,25 @@ public class Main {
                     iterationCounter++;
                 }
                 if (characterReceived == -1) throw new customExceptionMessage("Modem disconnected during image request");
-                if (characterReceived == endSequence[counter]) counter += 1;
-                else counter = 0;
+                if (characterReceived == endSequence[stopCounter]) stopCounter += 1;
+                else stopCounter = 0;
             }catch (Exception e){
                 System.out.println(e);
                 System.exit(1);
             }
-            if (counter == endSequence.length){
+            if (stopCounter == endSequence.length){
                 fos.close();
-                break;
             }
-        }
+        }while(stopCounter != endSequence.length);
     }
 
     /**
      * Method that constructs an image code given the CAM,DIR,SIZE parameters
      * @param imageCode the requested image code
-     * @param cam   the code of the camera
-     * @param dir   the direction (L,R,U,D)
-     * @param size  the desirable size of the image (S,L)
-     * @return      returns a string with the code and the desirable image parameters
+     * @param cam       the code of the camera
+     * @param dir       the direction (L,R,U,D)
+     * @param size      the desirable size of the image (S,L)
+     * @return          returns a string with the code and the desirable image parameters
      */
     public static String constructImageCode(String imageCode,String cam,String dir,String size){
         boolean bool = dir.equals("L") || dir.equals("U") || dir.equals("R") || dir.equals("D");
@@ -223,12 +242,17 @@ public class Main {
         return imageCode;
     }
 
-    public static void getGPSMark(Modem modem,String gpsCode) throws IOException {
+    /**
+     *
+     * @param modem         a modem class
+     * @param gpsCode       the requested gps code
+     * @param R             route parameters
+     * @throws IOException  throws IO exception if there is an error creating the file
+     */
+    public static void getGPSMark(Modem modem,String gpsCode,List<String> R) throws IOException {
 
         char[] startSequence = "START ITHAKI GPS TRACKING\r\n".toCharArray();
         char[] stopSequence = "STOP ITHAKI GPS TRACKING\r\n".toCharArray();
-        List<String> R = new ArrayList<>();
-        R.add("1000080");
         String gpsMarkCode = constructGPSCode(gpsCode,R,true);
         int characterReceived,stopCounter=0,iterationCounter=0;
         boolean startCorrect=true;
@@ -239,9 +263,8 @@ public class Main {
             System.out.println(e);
             System.exit(1);
         }
-        String gpsMark = new String();
-
-        for(;;){
+        String gpsMark = "";
+        do{
             try{
                 characterReceived = modem.read();
                 if (characterReceived == -1) throw new customExceptionMessage("Modem disconnected during packet request");
@@ -258,8 +281,8 @@ public class Main {
                 System.out.println(e);
                 System.exit(1);
             }
-            if (stopCounter == stopSequence.length) break;
-        }
+        }while(stopCounter != stopSequence.length);
+
         gpsMark = gpsMark.substring(startSequence.length,gpsMark.length()-stopSequence.length);
         List<String> latitude = new ArrayList<>();
         List<String> longitude = new ArrayList<>();
@@ -283,10 +306,16 @@ public class Main {
 
     }
 
+    /**
+     * Method that requests and saves an image from ithaki server with gps marks on it
+     * @param modem         a modem class
+     * @param gpsImgCode    the requested gps image code
+     * @throws IOException  throws IO exception if there is an error creating the file
+     */
     public static void getGPSImage(Modem modem,String gpsImgCode) throws IOException {
 
         boolean startCorrect=true;
-        int characterReceived,counter = 0,iterationCounter=0;
+        int characterReceived,stopCounter = 0,iterationCounter=0;
         int[] startSequence = {255,216};
         int[] endSequence = {255,217};
         File image = new File("./gpsimg.jpg");
@@ -298,7 +327,7 @@ public class Main {
             System.out.println(e);
             System.exit(1);
         }
-        for(;;){
+        do{
             try{
                 characterReceived = modem.read();
                 fos.write((byte) characterReceived);
@@ -308,26 +337,25 @@ public class Main {
                     iterationCounter++;
                 }
                 if (characterReceived == -1) throw new customExceptionMessage("Modem disconnected during image request");
-                if (characterReceived == endSequence[counter]) counter += 1;
-                else counter = 0;
+                if (characterReceived == endSequence[stopCounter]) stopCounter += 1;
+                else stopCounter = 0;
             }catch (Exception e){
                 System.out.println(e);
                 System.exit(1);
             }
-            if (counter == endSequence.length){
+            if (stopCounter == endSequence.length){
                 fos.close();
-                break;
             }
-        }
+        }while(stopCounter != endSequence.length);
 
     }
 
     /**
-     *
+     * Method that constructs a gps request code
      * @param gpsCode   the requested gps code
      * @param R         gps marks from a certain route (e.g R="XPPPLL") or gps marks jpeg image (e.g T="AABBCCDDEEZZ")
      * @param type      if type is true then parameter R is included in the code, otherwise R is a list with marks for the image
-     * @return
+     * @return          returns a gps code either requesting image with marks on it or just gps marks
      */
     public static String constructGPSCode(String gpsCode,List<String> R,boolean type){
         if(type){
@@ -336,10 +364,11 @@ public class Main {
             }
         }else{
             if (!R.isEmpty()) {
-                for (int i = 0; i < R.size(); i++) {
-                    gpsCode = gpsCode + "T=" + R.get(i);
+                for (String s : R) {
+                    gpsCode = gpsCode + "T=" + s;
                 }
             }
+
         }
         gpsCode = gpsCode + "\r";
         return gpsCode;
