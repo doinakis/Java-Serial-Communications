@@ -49,7 +49,8 @@ public class Main {
         String gpsCode = "P4263";
         List<String> R = new ArrayList<>();
         R.add("1000080");
-        getGPSMark(modem,gpsCode,R);
+        imgLocation = "./gpsImage";
+        getGPSMark(modem,gpsCode,R,imgLocation);
 
         modem.close();
 
@@ -249,7 +250,7 @@ public class Main {
      * @param R             route parameters
      * @throws IOException  throws IO exception if there is an error creating the file
      */
-    public static void getGPSMark(Modem modem,String gpsCode,List<String> R) throws IOException {
+    public static void getGPSMark(Modem modem,String gpsCode,List<String> R,String imgLocation) throws IOException {
 
         char[] startSequence = "START ITHAKI GPS TRACKING\r\n".toCharArray();
         char[] stopSequence = "STOP ITHAKI GPS TRACKING\r\n".toCharArray();
@@ -302,7 +303,7 @@ public class Main {
             i++;
         }
         String gpsImgCode = constructGPSCode(gpsCode,T,false);
-        getGPSImage(modem,gpsImgCode);
+        getGPSImage(modem,gpsImgCode,imgLocation);
 
     }
 
@@ -312,13 +313,13 @@ public class Main {
      * @param gpsImgCode    the requested gps image code
      * @throws IOException  throws IO exception if there is an error creating the file
      */
-    public static void getGPSImage(Modem modem,String gpsImgCode) throws IOException {
+    public static void getGPSImage(Modem modem,String gpsImgCode,String imgLocation) throws IOException {
 
         boolean startCorrect=true;
         int characterReceived,stopCounter = 0,iterationCounter=0;
         int[] startSequence = {255,216};
         int[] endSequence = {255,217};
-        File image = new File("./gpsimg.jpg");
+        File image = new File(imgLocation);
         FileOutputStream fos = new FileOutputStream(image);
         try{
             if (!modem.write(gpsImgCode.getBytes()))
