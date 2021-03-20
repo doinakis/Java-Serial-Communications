@@ -160,18 +160,13 @@ public class Main {
     }
 
     /**
-     * Method that requests and saves an image requested from the ithaki server
+     * Receives a requested image from the server
      * @param modem         a modem class
-     * @param imageCode     the image code for the particular date and time provided by ithaki lab
-     * @param cam           parameter for which camera to be used
-     * @param dir           direction of the camera dir = "R" or "L" or "U" or "D"(right,left,up,down)(applies only for cam = "PTZ")
-     * @param size          size of the requested image size = "L" or "R" (applies only for cam = "PTZ")
+     * @param imgCode       the requested code
      * @param imgLocation   the location to store the image
      * @throws IOException  throws IO exception if there is an error creating the file
      */
-    public static void getImage(Modem modem,String imageCode,String cam,String dir,String size,String imgLocation) throws IOException {
-
-        imageCode = constructImageCode(imageCode,cam,dir,size);
+    public static void requestImage(Modem modem, String imgCode, String imgLocation) throws IOException {
         boolean startCorrect=true;
         int characterReceived,stopCounter = 0,iterationCounter=0;
         int[] startSequence = {255,216};
@@ -179,7 +174,7 @@ public class Main {
         File image = new File(imgLocation);
         FileOutputStream fos = new FileOutputStream(image);
         try{
-            if (!modem.write(imageCode.getBytes()))
+            if (!modem.write(imgCode.getBytes()))
                 throw new customExceptionMessage("Could not request image from server.");
         }catch (Exception e){
             System.out.println(e);
@@ -205,6 +200,22 @@ public class Main {
                 fos.close();
             }
         }while(stopCounter != endSequence.length);
+    }
+
+    /**
+     * Method that requests and saves an image requested from the ithaki server
+     * @param modem         a modem class
+     * @param imageCode     the image code for the particular date and time provided by ithaki lab
+     * @param cam           parameter for which camera to be used
+     * @param dir           direction of the camera dir = "R" or "L" or "U" or "D"(right,left,up,down)(applies only for cam = "PTZ")
+     * @param size          size of the requested image size = "L" or "R" (applies only for cam = "PTZ")
+     * @param imgLocation   the location to store the image
+     * @throws IOException  throws IO exception if there is an error creating the file
+     */
+    public static void getImage(Modem modem,String imageCode,String cam,String dir,String size,String imgLocation) throws IOException {
+
+        imageCode = constructImageCode(imageCode,cam,dir,size);
+        requestImage(modem, imageCode, imgLocation);
     }
 
     /**
@@ -303,51 +314,7 @@ public class Main {
             i++;
         }
         String gpsImgCode = constructGPSCode(gpsCode,T,false);
-        getGPSImage(modem,gpsImgCode,imgLocation);
-
-    }
-
-    /**
-     * Method that requests and saves an image from ithaki server with gps marks on it
-     * @param modem         a modem class
-     * @param gpsImgCode    the requested gps image code
-     * @throws IOException  throws IO exception if there is an error creating the file
-     */
-    public static void getGPSImage(Modem modem,String gpsImgCode,String imgLocation) throws IOException {
-
-        boolean startCorrect=true;
-        int characterReceived,stopCounter = 0,iterationCounter=0;
-        int[] startSequence = {255,216};
-        int[] endSequence = {255,217};
-        File image = new File(imgLocation);
-        FileOutputStream fos = new FileOutputStream(image);
-        try{
-            if (!modem.write(gpsImgCode.getBytes()))
-                throw new customExceptionMessage("Could not request image from server.");
-        }catch (Exception e){
-            System.out.println(e);
-            System.exit(1);
-        }
-        do{
-            try{
-                characterReceived = modem.read();
-                fos.write((byte) characterReceived);
-                if(iterationCounter < startSequence.length){
-                    if(characterReceived != startSequence[iterationCounter]) startCorrect = false;
-                    if(!startCorrect) throw new customExceptionMessage("Unexpected image format");
-                    iterationCounter++;
-                }
-                if (characterReceived == -1) throw new customExceptionMessage("Modem disconnected during image request");
-                if (characterReceived == endSequence[stopCounter]) stopCounter += 1;
-                else stopCounter = 0;
-            }catch (Exception e){
-                System.out.println(e);
-                System.exit(1);
-            }
-            if (stopCounter == endSequence.length){
-                fos.close();
-            }
-        }while(stopCounter != endSequence.length);
+        requestImage(modem,gpsImgCode,imgLocation);
 
     }
 
