@@ -48,19 +48,20 @@ public class Main {
         /*
          * Gps request experiment
          */
-        String gpsCode = "P5297";
+        String gpsCode = "P9930";
         List<String> R = new ArrayList<>();
         R.add("1000099");
         imgLocation = "./gpsImage.jpg";
         int numberOfMarks = 9;
-        getGPSMark(modem,gpsCode,R,imgLocation,numberOfMarks);
+        int timeBetweenMarks = 10;
+        getGPSMark(modem,gpsCode,R,imgLocation,numberOfMarks,timeBetweenMarks);
 
-//        /*
-//         * Automatic repeat request
-//         */
-//        String ackCode = "Q2107\r";
-//        String nackCode = "R3193\r";
-//        int number = arqPacketExperiment(modem,ackCode,nackCode,echoExpTime);
+        /*
+         * Automatic repeat request
+         */
+//        String ackCode = "Q8599\r";
+//        String nackCode = "R0911\r";
+//        int number = arqPacketExperiment(modem,ackCode,nackCode,1);
 
         modem.close();
 
@@ -271,7 +272,7 @@ public class Main {
      * @param R             route parameters
      * @throws IOException  throws IO exception if there is an error creating the file
      */
-    public static void getGPSMark(Modem modem,String gpsCode,List<String> R,String imgLocation,int numberOfMarks) throws IOException {
+    public static void getGPSMark(Modem modem,String gpsCode,List<String> R,String imgLocation,int numberOfMarks,int timeBetweenMarks) throws IOException {
 
         char[] startSequence = "START ITHAKI GPS TRACKING\r\n".toCharArray();
         char[] stopSequence = "STOP ITHAKI GPS TRACKING\r\n".toCharArray();
@@ -315,18 +316,21 @@ public class Main {
         int i = 0;
         double prevTime = 0.0;
         double currTime;
+        double time;
         String[] markSplit;
         String test;
+        String something="";
         for(int c = 0;c < k;c++){
             markSplit = gpsMark.split("\r\n")[c].split(",");
-            currTime = Double.parseDouble(markSplit[1].substring(0,2)) * 3600 + Double.parseDouble(markSplit[1].substring(2,4)) * 60 + Double.parseDouble(markSplit[1].substring(4));
-            currTime = currTime - prevTime;
-            if(currTime >= 4 && i < numberOfMarks){
+            currTime = Double.parseDouble(markSplit[1].substring(0,2)) * 3600 + Double.parseDouble(markSplit[1].substring(2,4))* 60 + Double.parseDouble(markSplit[1].substring(4));
+            time = currTime - prevTime;
+            if(time >= timeBetweenMarks && i < numberOfMarks){
                 latitude.add(markSplit[2]);
                 longitude.add(markSplit[4]);
                 secondsLat = (int)Math.round(Double.parseDouble(latitude.get(i).substring(4)) * 60);
                 secondsLon = (int)Math.round(Double.parseDouble(longitude.get(i).substring(5)) * 60);
                 test = longitude.get(i).substring(1,5) + secondsLon + latitude.get(i).substring(0,4) + secondsLat;
+                something = "";
                 if(!T.contains(test)) {
                     T.add(test);
                     prevTime = currTime;
@@ -369,10 +373,13 @@ public class Main {
     public static int arqPacketExperiment(Modem modem,String ackCode,String nackCode,int time){
         long timeElapsed,totalTime=0L,experimentTime=(long)time*60000;
         boolean correctPacket = requestARQCode(modem,ackCode);
-        int numberOfFailed = 0;
+        int numberOfFailed = 0,numberOfACK=0;
         while(totalTime < experimentTime){
             timeElapsed = System.currentTimeMillis();
-            if(correctPacket) correctPacket = requestARQCode(modem,ackCode);
+            if(correctPacket) {
+                correctPacket = requestARQCode(modem,ackCode);
+                numberOfACK++;
+            }
             else{
                 correctPacket = requestARQCode(modem,nackCode);
                 numberOfFailed++;
