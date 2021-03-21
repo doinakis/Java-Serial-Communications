@@ -50,10 +50,10 @@ public class Main {
          */
         String gpsCode = "P9930";
         List<String> R = new ArrayList<>();
-        R.add("1000099");
-        imgLocation = "./gpsImage.jpg";
+        R.add("1080099");
+        imgLocation = "./gpsImage8.jpg";
         int numberOfMarks = 9;
-        int timeBetweenMarks = 10;
+        int timeBetweenMarks = 4;
         getGPSMark(modem,gpsCode,R,imgLocation,numberOfMarks,timeBetweenMarks);
 
         /*
