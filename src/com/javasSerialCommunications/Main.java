@@ -2,66 +2,65 @@ package com.javasSerialCommunications;
 
 import ithakimodem.*;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-
-import static java.lang.Math.abs;
 
 
 public class Main {
 
     public static void main(String[] args) throws IOException{
 
-        Modem modem = new Modem(80000);
+        Modem modem = new Modem(1000);
         String modemName = "ithaki";
         openModem(modem,modemName);
-//        /*
-//         * Echo packet response times experiment
-//         */
-//        int echoExpTime = 1;
-//        String echoCode = "E7349\r";
-//        List<Long> times = echoPacketResponseTime(modem,echoCode,echoExpTime);
-//
-//        /*
-//         * Image request experiment
-//         */
-//        // Error free
-//        String imageCode = "M6915";
-//        String cam = ""; // or CAM = "FIX" or "PTZ" or ""
-//        String dir = "";
-//        String size = "";
-        String imgLocation = "./imgFIXErrorFree.jpg";
-//        constructImageCode(imageCode,cam,dir,size);
-//        getImage(modem,imageCode,cam,dir,size,imgLocation);
-//
-//        // With errors
-//        imageCode = "G8174";
-//        cam = "";
-//        dir = "";
-//        size = "";
-//        imgLocation = "./imgFIXErrors.jpg";
-//        getImage(modem,imageCode,cam,dir,size,imgLocation);
+        int expTime = 4;
+        /*
+         * Echo packet response times experiment
+         */
+        String echoCode = "E8633\r";
+        echoPacketResponseTime(modem,echoCode,expTime);
+
+        /*
+         * Image request experiment
+         */
+        // Error free
+        modem.setSpeed(80000);
+        String imageCode = "M3264";
+        String cam = ""; // or CAM = "FIX" or "PTZ" or ""
+        String dir = "";
+        String size = "";
+        String imgLocation = "./session1/imgFIXErrorFree.jpg";
+        constructImageCode(imageCode,cam,dir,size);
+        getImage(modem,imageCode,cam,dir,size,imgLocation);
+
+        // With errors
+        imageCode = "G8450";
+        cam = "";
+        dir = "";
+        size = "";
+        imgLocation = "./session1/imgFIXErrors.jpg";
+        getImage(modem,imageCode,cam,dir,size,imgLocation);
 
         /*
          * Gps request experiment
          */
-        String gpsCode = "P9930";
+        String gpsCode = "P9674";
         List<String> R = new ArrayList<>();
-        R.add("1080099");
-        imgLocation = "./gpsImage8.jpg";
+        R.add("1040099");
+        imgLocation = "./session1/gpsImage0.jpg";
         int numberOfMarks = 9;
-        int timeBetweenMarks = 4;
+        int timeBetweenMarks = 5;
         getGPSMark(modem,gpsCode,R,imgLocation,numberOfMarks,timeBetweenMarks);
+
 
         /*
          * Automatic repeat request
          */
-//        String ackCode = "Q8599\r";
-//        String nackCode = "R0911\r";
-//        int number = arqPacketExperiment(modem,ackCode,nackCode,1);
+        modem.setSpeed(1000);
+        String ackCode = "Q4801\r";
+        String nackCode = "R6347\r";
+        arqPacketExperiment(modem,ackCode,nackCode,expTime);
 
         modem.close();
 
@@ -74,7 +73,6 @@ public class Main {
      */
     public static void openModem(Modem modem,String modemName){
         try{
-
             if(!modem.open(modemName)) throw new customExceptionMessage("Could not open to modem.");
             printHelloMessage(modem);
         }catch(Exception e){
@@ -110,10 +108,8 @@ public class Main {
      * @param modem a modem class
      * @param echoCode the echo code for the particular date and time provided by ithaki lab
      * @param time how long the experiment will continue asking ithaki server for echo packets (in minutes)
-     * @return a list with the response times of all the echo packets requested, as response time is defined the time
-     *          that the last character of the echo packet is received
      */
-    public static List<Long> echoPacketResponseTime(Modem modem,String echoCode,int time){
+    public static void echoPacketResponseTime(Modem modem,String echoCode,int time){
         List<Long> responseTimes = new ArrayList<>();
         long timeElapsed,totalTime=0L,experimentTime=(long)time*60000;
         while(totalTime < experimentTime){
@@ -122,7 +118,18 @@ public class Main {
             timeElapsed = System.currentTimeMillis() - timeElapsed;
             totalTime += timeElapsed;
         }
-        return responseTimes;
+        String toWriteEchoResponseTimes = "";
+        for(int i = 0; i < responseTimes.size();i++){
+            toWriteEchoResponseTimes += responseTimes.get(i) + ",";
+        }
+        try {
+            File myFile1 = new File("./session1/echoExperiment.csv");
+            Writer writer = new PrintWriter(myFile1);
+            writer.write(toWriteEchoResponseTimes);
+            writer.close();
+        } catch (Exception e) {
+            System.out.println(e);
+        }
     }
 
     /**
@@ -310,16 +317,14 @@ public class Main {
         List<String> latitude = new ArrayList<>();
         List<String> longitude = new ArrayList<>();
         List<String> T = new ArrayList<>();
-        int minutesLat,minutesLon;
         int secondsLat,secondsLon;
-        int k =gpsMark.split("\r\n").length;
+        int k = gpsMark.split("\r\n").length;
         int i = 0;
         double prevTime = 0.0;
         double currTime;
         double time;
         String[] markSplit;
         String test;
-        String something="";
         for(int c = 0;c < k;c++){
             markSplit = gpsMark.split("\r\n")[c].split(",");
             currTime = Double.parseDouble(markSplit[1].substring(0,2)) * 3600 + Double.parseDouble(markSplit[1].substring(2,4))* 60 + Double.parseDouble(markSplit[1].substring(4));
@@ -330,16 +335,14 @@ public class Main {
                 secondsLat = (int)Math.round(Double.parseDouble(latitude.get(i).substring(4)) * 60);
                 secondsLon = (int)Math.round(Double.parseDouble(longitude.get(i).substring(5)) * 60);
                 test = longitude.get(i).substring(1,5) + secondsLon + latitude.get(i).substring(0,4) + secondsLat;
-                something = "";
                 if(!T.contains(test)) {
                     T.add(test);
-                    prevTime = currTime;
                     i++;
                 }else{
                     latitude.remove(i);
                     longitude.remove(i);
                 }
-
+                prevTime = currTime;
             }
         }
         String gpsImgCode = constructGPSCode(gpsCode,T,false);
@@ -370,26 +373,71 @@ public class Main {
         return gpsCode;
     }
 
-    public static int arqPacketExperiment(Modem modem,String ackCode,String nackCode,int time){
+    /**
+     * Method that performs the ARQ packet experiment
+     * @param modem     a modem class
+     * @param ackCode   request code that indicates that the packets arrived correctly
+     * @param nackCode  request code that indicates that the packets arrived incorrectly
+     * @param time      the time the experiment will tun
+     */
+    public static void arqPacketExperiment(Modem modem,String ackCode,String nackCode,int time){
+        List<Integer> numberOfNack = new ArrayList<>();
+        List<Long> packetResponseTime = new ArrayList<>();
         long timeElapsed,totalTime=0L,experimentTime=(long)time*60000;
-        boolean correctPacket = requestARQCode(modem,ackCode);
-        int numberOfFailed = 0,numberOfACK=0;
+
         while(totalTime < experimentTime){
             timeElapsed = System.currentTimeMillis();
-            if(correctPacket) {
-                correctPacket = requestARQCode(modem,ackCode);
-                numberOfACK++;
-            }
-            else{
-                correctPacket = requestARQCode(modem,nackCode);
-                numberOfFailed++;
-            }
+            numberOfNack.add(getCorrectPacket(modem,ackCode,nackCode));
             timeElapsed = System.currentTimeMillis() - timeElapsed;
+            packetResponseTime.add(timeElapsed);
             totalTime += timeElapsed;
         }
-        return numberOfFailed;
+        String toWriteARQTimes="";
+        String toWriteNumberOfARQ = "";
+        for(int i = 0; i < packetResponseTime.size();i++){
+            toWriteARQTimes += packetResponseTime.get(i) + ",";
+        }
+        for(int i = 0; i < numberOfNack.size();i++){
+            toWriteNumberOfARQ += numberOfNack.get(i) + ",";
+        }
+        try {
+            File myFile1 = new File("./session1/ArqResponseTimes.csv");
+            File myFile2= new File("./session1/ArqNumberOfNack.csv");
+            Writer writer1 = new PrintWriter(myFile1);
+            Writer writer2 = new PrintWriter(myFile2);
+            writer1.write(toWriteARQTimes);
+            writer2.write(toWriteNumberOfARQ);
+            writer1.close();
+            writer2.close();
+        } catch (Exception e) {
+            System.out.println(e);
+        }
     }
 
+    /**
+     * Method that counts how many times a specific packet is requested
+     * @param modem     a modem class
+     * @param ackCode   the code that requests the next packet if the received packet is correct
+     * @param nackCode  the code that requests the same packet if its received incorrectly
+     * @return  returns the number of times a packet its requested
+     */
+    public static int getCorrectPacket(Modem modem,String ackCode,String nackCode){
+        int numberOfNack=0;
+        if(!requestARQCode(modem,ackCode)) {
+            numberOfNack++;
+            while (!requestARQCode(modem,nackCode)) {
+                numberOfNack++;
+            }
+        }
+        return numberOfNack;
+    }
+
+    /**
+     * Method that requests a packet from the server
+     * @param modem     a modem class
+     * @param arqCode   the request code (either ACK or Nack)
+     * @return returns true if the requested packet arrives correctly, false otherwise
+     */
     public static boolean requestARQCode(Modem modem,String arqCode){
         char[] startSequence = "PSTART".toCharArray();
         char[] stopSequence = "PSTOP".toCharArray();
