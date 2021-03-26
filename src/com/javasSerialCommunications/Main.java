@@ -1,32 +1,45 @@
 package com.javasSerialCommunications;
 
 import ithakimodem.*;
-
 import java.io.*;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
-
 
 public class Main {
 
     public static void main(String[] args) throws IOException{
+        SimpleDateFormat formatter= new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss z");
+        Date date;
 
         Modem modem = new Modem(1000);
         String modemName = "ithaki";
+        modem.setTimeout(2000);
         openModem(modem,modemName);
         int expTime = 4;
         /*
          * Echo packet response times experiment
          */
-        String echoCode = "E8633\r";
+        String echoCode = "E4360\r";
+
+        date = new Date(System.currentTimeMillis());
+        System.out.println("Echo Packet experiment started: " + formatter.format(date));
+
         echoPacketResponseTime(modem,echoCode,expTime);
 
+        date = new Date(System.currentTimeMillis());
+        System.out.println("Echo Packet experiment ended: " + formatter.format(date));
         /*
          * Image request experiment
          */
         // Error free
+
+        date = new Date(System.currentTimeMillis());
+        System.out.println("Requesting error free image: " + formatter.format(date));
+
         modem.setSpeed(80000);
-        String imageCode = "M3264";
+        String imageCode = "M2811";
         String cam = ""; // or CAM = "FIX" or "PTZ" or ""
         String dir = "";
         String size = "";
@@ -34,33 +47,46 @@ public class Main {
         constructImageCode(imageCode,cam,dir,size);
         getImage(modem,imageCode,cam,dir,size,imgLocation);
 
+        date = new Date(System.currentTimeMillis());
+        System.out.println("Image  received: " + formatter.format(date));
+
         // With errors
-        imageCode = "G8450";
+        imageCode = "G8215";
         cam = "";
         dir = "";
         size = "";
         imgLocation = "./session1/imgFIXErrors.jpg";
+        date = new Date(System.currentTimeMillis());
+        System.out.println("Requesting image with errors: " + formatter.format(date));
         getImage(modem,imageCode,cam,dir,size,imgLocation);
-
+        date = new Date(System.currentTimeMillis());
+        System.out.println("Image  received: " + formatter.format(date));
         /*
          * Gps request experiment
          */
-        String gpsCode = "P9674";
+        String gpsCode = "P7766";
         List<String> R = new ArrayList<>();
         R.add("1040099");
         imgLocation = "./session1/gpsImage0.jpg";
         int numberOfMarks = 9;
         int timeBetweenMarks = 5;
+        date = new Date(System.currentTimeMillis());
+        System.out.println("Requesting GPS route image: " + formatter.format(date));
         getGPSMark(modem,gpsCode,R,imgLocation,numberOfMarks,timeBetweenMarks);
-
+        date = new Date(System.currentTimeMillis());
+        System.out.println("Image  received: " + formatter.format(date));
 
         /*
          * Automatic repeat request
          */
         modem.setSpeed(1000);
-        String ackCode = "Q4801\r";
-        String nackCode = "R6347\r";
+        String ackCode = "Q7000\r";
+        String nackCode = "R7611\r";
+        date = new Date(System.currentTimeMillis());
+        System.out.println("Starting Automatic Repeat experiment: " + formatter.format(date));
         arqPacketExperiment(modem,ackCode,nackCode,expTime);
+        date = new Date(System.currentTimeMillis());
+        System.out.println("Automatic Repeat Request experiment ended: " + formatter.format(date));
 
         modem.close();
 
@@ -119,8 +145,8 @@ public class Main {
             totalTime += timeElapsed;
         }
         String toWriteEchoResponseTimes = "";
-        for(int i = 0; i < responseTimes.size();i++){
-            toWriteEchoResponseTimes += responseTimes.get(i) + ",";
+        for (Long responseTime : responseTimes) {
+            toWriteEchoResponseTimes += responseTime + ",";
         }
         try {
             File myFile1 = new File("./session1/echoExperiment.csv");
@@ -146,7 +172,7 @@ public class Main {
         int characterReceived,stopCounter=0,iterationCounter=0;
         boolean startCorrect=true;
         try{
-            if (!modem.write(echoCode.getBytes()))
+            if(!modem.write(echoCode.getBytes()))
                 throw new customExceptionMessage("Could not request packet from server.");
             responseTime = System.currentTimeMillis();
 
@@ -160,9 +186,9 @@ public class Main {
                 if (characterReceived == -1) throw new customExceptionMessage("Modem disconnected during packet request");
                 if ((char) characterReceived == stopSequence[stopCounter]) stopCounter += 1;
                 else stopCounter = 0;
-                if(iterationCounter < startSequence.length){
-                    if(characterReceived != startSequence[iterationCounter]) startCorrect = false;
-                    if(!startCorrect) throw new customExceptionMessage("Unexpected packet format");
+                if (iterationCounter < startSequence.length){
+                    if (characterReceived != startSequence[iterationCounter]) startCorrect = false;
+                    if (!startCorrect) throw new customExceptionMessage("Unexpected packet format");
                     iterationCounter++;
                 }
                 if (stopCounter == stopSequence.length){
@@ -394,11 +420,11 @@ public class Main {
         }
         String toWriteARQTimes="";
         String toWriteNumberOfARQ = "";
-        for(int i = 0; i < packetResponseTime.size();i++){
-            toWriteARQTimes += packetResponseTime.get(i) + ",";
+        for (Long aLong : packetResponseTime) {
+            toWriteARQTimes += aLong + ",";
         }
-        for(int i = 0; i < numberOfNack.size();i++){
-            toWriteNumberOfARQ += numberOfNack.get(i) + ",";
+        for (Integer integer : numberOfNack) {
+            toWriteNumberOfARQ += integer + ",";
         }
         try {
             File myFile1 = new File("./session1/ArqResponseTimes.csv");
@@ -474,8 +500,8 @@ public class Main {
         char[] coded = arqResponse.split(" ")[4].substring(1,17).toCharArray();
         int fcs = Integer.parseInt(arqResponse.split(" ")[5]);
         int codedFCS = 0;
-        for(int i = 0;i < coded.length;i++){
-            codedFCS = codedFCS ^ (int) coded[i];
+        for (char c : coded) {
+            codedFCS = codedFCS ^ (int) c;
         }
 
         return (codedFCS == fcs);
