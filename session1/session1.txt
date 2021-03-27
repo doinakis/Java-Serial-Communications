@@ -1,0 +1,15 @@
+Echo Packet experiment started: 2021-03-26 at 20:47:50 EET
+Echo Packet experiment ended: 2021-03-26 at 20:51:50 EET
+
+Requesting error free image: 2021-03-26 at 20:51:50 EET
+Image  received: 2021-03-26 at 20:52:00 EET
+
+Requesting image with errors: 2021-03-26 at 20:52:00 EET
+Image  received: 2021-03-26 at 20:52:09 EET
+
+Requesting gps route image: 2021-03-26 at 20:52:09 EET
+Image  received: 2021-03-26 at 20:52:27 EET
+
+Starting Automatic Repeat experiment: 2021-03-26 at 20:52:27 EET
+Automatic Repeat Request experiment ended: 2021-03-26 at 20:56:27 EET
+
