@@ -7,9 +7,9 @@ clear
 close all
 %%
 % Request Codes
-echo = "E4360.";
-ack = "Q7000,";
-nack = "R7611.";
+echo = "E4511.";
+ack = "Q9912,";
+nack = "R1580.";
 %%
 % Produces graph G1 with the response times in milliseconds for a 4 minute
 % experiment
@@ -17,8 +17,8 @@ nack = "R7611.";
 echoExperiment = importdata("echoExperiment.csv");
 G1 = figure;
 bar(echoExperiment);
-g1Title = "G1: Echo Request Code: " + echo + newline + "Echo Packet experiment started: 2021-03-26 at 20:47:50 EET" + ...
-    newline + "Echo Packet experiment ended: 2021-03-26 at 20:51:50 EET.";
+g1Title = "G1: Echo Request Code: " + echo + newline + "Echo Packet experiment started: 2021-03-31 at 19:50:38 EEST" + ...
+    newline + "Echo Packet experiment ended: 2021-03-31 at 19:54:38 EEST.";
 title(g1Title);
 ylabel("Response time (in milliseconds)");
 xlabel("Packet");
@@ -30,8 +30,8 @@ arqResponseTimes = importdata("arqResponseTimes.csv");
 G2 = figure;
 bar(arqResponseTimes);
 g2Title = "G2: ACK Request Code: " + ack + "NACK Request Code: " + nack + newline + ...
-    "Automatic Repeat experiment started: 2021-03-26 at 20:52:27 EET" + newline + ...
-    "Automatic Repeat Request experiment ended: 2021-03-26 at 20:56:27 EET.";
+    "Automatic Repeat experiment started: 2021-03-31 at 19:55:07 EEST" + newline + ...
+    "Automatic Repeat Request experiment ended: 2021-03-31 at 19:59:07 EEST.";
 title(g2Title);
 ylabel("Response time (in milliseconds)");
 xlabel("Packet");
@@ -50,8 +50,8 @@ line(xgrid+1,pdfEst);
 ylim([0 1]);
 xticks(1:size(timesRequested,2));
 g3Title = "Distribution estimation." + newline + "G3: ACK Request Code: " + ack + "NACK Request Code: " + nack + ...
-    newline + "Automatic Repeat experiment started: 2021-03-26 at 20:52:27 EET" + newline + ...
-    "Automatic Repeat Request experiment ended: 2021-03-26 at 20:56:27 EET";
+    newline + "Automatic Repeat experiment started: 2021-03-31 at 19:55:07 EEST" + newline + ...
+    "Automatic Repeat Request experiment ended: 2021-03-31 at 19:59:07 EEST";
 title(g3Title);
 xlabel("#Repeations");
 ylabel("Relative frequency of repeations");

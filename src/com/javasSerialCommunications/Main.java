@@ -13,16 +13,18 @@ public class Main {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss z");
         Date date;
 
-        Modem modem = new Modem(1000);
+        Modem modem = new Modem(2000);
         String modemName = "ithaki";
         modem.setTimeout(2000);
         openModem(modem,modemName);
+
         int expTime = 4;
         /*
          * Echo packet response times experiment
          */
-        String echoCode = "E4360\r";
-
+        String echoCode = "E4511\r";
+        getEchoPacket(modem,echoCode);
+        getEchoPacket(modem,echoCode);
         date = new Date(System.currentTimeMillis());
         System.out.println("Echo Packet experiment started: " + formatter.format(date));
 
@@ -34,28 +36,25 @@ public class Main {
          * Image request experiment
          */
         // Error free
-
-        date = new Date(System.currentTimeMillis());
-        System.out.println("Requesting error free image: " + formatter.format(date));
-
         modem.setSpeed(80000);
-        String imageCode = "M2811";
-        String cam = ""; // or CAM = "FIX" or "PTZ" or ""
+        String imageCode = "M9556";
+        String cam = "PTZ"; // or CAM = "FIX" or "PTZ" or ""
         String dir = "";
         String size = "";
-        String imgLocation = "./session1/imgFIXErrorFree.jpg";
+        String imgLocation = "./session2/imgPTZErrorFree.jpg";
         constructImageCode(imageCode,cam,dir,size);
+        date = new Date(System.currentTimeMillis());
+        System.out.println("Requesting error free image: " + formatter.format(date));
         getImage(modem,imageCode,cam,dir,size,imgLocation);
-
         date = new Date(System.currentTimeMillis());
         System.out.println("Image  received: " + formatter.format(date));
 
         // With errors
-        imageCode = "G8215";
-        cam = "";
+        imageCode = "G7481";
+        cam = "PTZ";
         dir = "";
         size = "";
-        imgLocation = "./session1/imgFIXErrors.jpg";
+        imgLocation = "./session2/imgPTZErrors.jpg";
         date = new Date(System.currentTimeMillis());
         System.out.println("Requesting image with errors: " + formatter.format(date));
         getImage(modem,imageCode,cam,dir,size,imgLocation);
@@ -64,12 +63,12 @@ public class Main {
         /*
          * Gps request experiment
          */
-        String gpsCode = "P7766";
+        String gpsCode = "P5712";
         List<String> R = new ArrayList<>();
-        R.add("1040099");
-        imgLocation = "./session1/gpsImage0.jpg";
+        R.add("1015099");
+        imgLocation = "./session2/gpsImage10.jpg";
         int numberOfMarks = 9;
-        int timeBetweenMarks = 5;
+        int timeBetweenMarks = 10;
         date = new Date(System.currentTimeMillis());
         System.out.println("Requesting GPS route image: " + formatter.format(date));
         getGPSMark(modem,gpsCode,R,imgLocation,numberOfMarks,timeBetweenMarks);
@@ -79,11 +78,11 @@ public class Main {
         /*
          * Automatic repeat request
          */
-        modem.setSpeed(1000);
-        String ackCode = "Q7000\r";
-        String nackCode = "R7611\r";
+        modem.setSpeed(2000);
+        String ackCode = "Q9912\r";
+        String nackCode = "R1580\r";
         date = new Date(System.currentTimeMillis());
-        System.out.println("Starting Automatic Repeat experiment: " + formatter.format(date));
+        System.out.println("Automatic Repeat experiment started: " + formatter.format(date));
         arqPacketExperiment(modem,ackCode,nackCode,expTime);
         date = new Date(System.currentTimeMillis());
         System.out.println("Automatic Repeat Request experiment ended: " + formatter.format(date));
@@ -149,7 +148,7 @@ public class Main {
             toWriteEchoResponseTimes += responseTime + ",";
         }
         try {
-            File myFile1 = new File("./session1/echoExperiment.csv");
+            File myFile1 = new File("./session2/echoExperiment.csv");
             Writer writer = new PrintWriter(myFile1);
             writer.write(toWriteEchoResponseTimes);
             writer.close();
@@ -327,7 +326,6 @@ public class Main {
                 if ((char) characterReceived == stopSequence[stopCounter]) stopCounter += 1;
                 else stopCounter = 0;
                 gpsMark += (char) characterReceived;
-                System.out.print((char)characterReceived);
                 if(iterationCounter < startSequence.length){
                     if(characterReceived != startSequence[iterationCounter]) startCorrect = false;
                     if(!startCorrect) throw new customExceptionMessage("Unexpected packet format");
@@ -427,8 +425,8 @@ public class Main {
             toWriteNumberOfARQ += integer + ",";
         }
         try {
-            File myFile1 = new File("./session1/ArqResponseTimes.csv");
-            File myFile2= new File("./session1/ArqNumberOfNack.csv");
+            File myFile1 = new File("./session2/ArqResponseTimes.csv");
+            File myFile2= new File("./session2/ArqNumberOfNack.csv");
             Writer writer1 = new PrintWriter(myFile1);
             Writer writer2 = new PrintWriter(myFile2);
             writer1.write(toWriteARQTimes);
