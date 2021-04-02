@@ -1,3 +1,7 @@
+/*
+ * Doinakis Michail 9292
+ * e-mail: doinakis@eceauth.gr
+ */
 package com.javasSerialCommunications;
 
 import ithakimodem.*;
@@ -41,7 +45,7 @@ public class Main {
         String cam = "PTZ"; // or CAM = "FIX" or "PTZ" or ""
         String dir = "";
         String size = "";
-        String imgLocation = "./session2/imgPTZErrorFree.jpg";
+        String imgLocation = "./session/imgPTZErrorFree.jpg";
         constructImageCode(imageCode,cam,dir,size);
         date = new Date(System.currentTimeMillis());
         System.out.println("Requesting error free image: " + formatter.format(date));
@@ -54,7 +58,7 @@ public class Main {
         cam = "PTZ";
         dir = "";
         size = "";
-        imgLocation = "./session2/imgPTZErrors.jpg";
+        imgLocation = "./session/imgPTZErrors.jpg";
         date = new Date(System.currentTimeMillis());
         System.out.println("Requesting image with errors: " + formatter.format(date));
         getImage(modem,imageCode,cam,dir,size,imgLocation);
@@ -66,7 +70,7 @@ public class Main {
         String gpsCode = "P5712";
         List<String> R = new ArrayList<>();
         R.add("1015099");
-        imgLocation = "./session2/gpsImage10.jpg";
+        imgLocation = "./session/gpsImage.jpg";
         int numberOfMarks = 9;
         int timeBetweenMarks = 10;
         date = new Date(System.currentTimeMillis());
@@ -148,7 +152,7 @@ public class Main {
             toWriteEchoResponseTimes += responseTime + ",";
         }
         try {
-            File myFile1 = new File("./session2/echoExperiment.csv");
+            File myFile1 = new File("./session/echoExperiment.csv");
             Writer writer = new PrintWriter(myFile1);
             writer.write(toWriteEchoResponseTimes);
             writer.close();
@@ -425,8 +429,8 @@ public class Main {
             toWriteNumberOfARQ += integer + ",";
         }
         try {
-            File myFile1 = new File("./session2/ArqResponseTimes.csv");
-            File myFile2= new File("./session2/ArqNumberOfNack.csv");
+            File myFile1 = new File("./session/ArqResponseTimes.csv");
+            File myFile2= new File("./session/ArqNumberOfNack.csv");
             Writer writer1 = new PrintWriter(myFile1);
             Writer writer2 = new PrintWriter(myFile2);
             writer1.write(toWriteARQTimes);
