@@ -42,7 +42,7 @@ public class virtualModem {
 
     static String gpsCode = "P1108";
     static String gpsRoute = "1015099";
-    static int numberOfMarks = 9;
+    static int numberOfMarks = 5;
     static int timeBetweenMarks = 10;
 
     static String ackCode = "Q8694";
@@ -59,6 +59,7 @@ public class virtualModem {
     public void demo() throws IOException {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss z");
         Date date;
+        modem.setSpeed(modemSpeed);
         modem.setTimeout(timeout);
         openModem(modem,modemName);
 
@@ -364,8 +365,8 @@ public class virtualModem {
         }while(stopCounter != stopSequence.length);
 
         gpsMark = gpsMark.substring(startSequence.length,gpsMark.length()-stopSequence.length);
-        List<String> latitude = new ArrayList<>();
-        List<String> longitude = new ArrayList<>();
+        String latitude;
+        String longitude;
         List<String> T = new ArrayList<>();
         int secondsLat,secondsLon;
         int k = gpsMark.split("\r\n").length;
@@ -380,17 +381,14 @@ public class virtualModem {
             currTime = Double.parseDouble(markSplit[1].substring(0,2)) * 3600 + Double.parseDouble(markSplit[1].substring(2,4))* 60 + Double.parseDouble(markSplit[1].substring(4));
             time = currTime - prevTime;
             if(time >= timeBetweenMarks && i < numberOfMarks) {
-                latitude.add(markSplit[2]);
-                longitude.add(markSplit[4]);
-                secondsLat = (int)Math.round(Double.parseDouble(latitude.get(i).substring(4)) * 60);
-                secondsLon = (int)Math.round(Double.parseDouble(longitude.get(i).substring(5)) * 60);
-                test = longitude.get(i).substring(1,5) + secondsLon + latitude.get(i).substring(0,4) + secondsLat;
+                latitude = markSplit[2];
+                longitude = markSplit[4];
+                secondsLat = (int)Math.round(Double.parseDouble(latitude.substring(4)) * 60);
+                secondsLon = (int)Math.round(Double.parseDouble(longitude.substring(5)) * 60);
+                test = longitude.substring(1,5) + secondsLon + latitude.substring(0,4) + secondsLat;
                 if(!T.contains(test)) {
                     T.add(test);
                     i++;
-                }else {
-                    latitude.remove(i);
-                    longitude.remove(i);
                 }
                 prevTime = currTime;
             }
