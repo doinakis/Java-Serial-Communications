@@ -1,6 +1,7 @@
 %%
 % Diktya 1 Doinakis Michalis 9292
 % e-mail: doinakis@ece.auth.gr
+% Session2 script
 %%
 clc
 clear
