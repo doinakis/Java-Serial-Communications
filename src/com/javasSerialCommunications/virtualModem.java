@@ -15,38 +15,38 @@ public class virtualModem {
     /**
      * Static variables for handling the modem
      */
-    static Modem modem = new Modem();
+    static Modem ithaki = new Modem();
     static int modemSpeed = 1000;
     static int modemSpeedImage = 80000;
     static String modemName = "ithaki";
     static int timeout = 2000;
     static int expTime = 4;
-    static String folderLocation = "./session/";
+    static String folderLocation = "./";
 
     /**
      * Experiment Codes
      */
-    static String echoCode = "E7745";
+    static String echoCode = "E2640";
 
-    static String imageCode = "M7525";
+    static String imageCode = "M0960";
     static String cam = "FIX"; // or CAM = "FIX" or "PTZ" or ""
     // Only for PTZ type of img.If CAM = "FIX" they are ignored
     static String dir = "L";
     static String size = "S";
 
-    static String imageCodeErrors = "G2202";
+    static String imageCodeErrors = "G9493";
     static String camErrors = "PTZ";
     // Only for PTZ type of img.If CAM = "FIX" they are ignored
     static String dirErrors = "L";
     static String sizeErrors = "S";
 
-    static String gpsCode = "P1108";
+    static String gpsCode = "P0348";
     static String gpsRoute = "1015099";
-    static int numberOfMarks = 5;
+    static int numberOfMarks = 9;
     static int timeBetweenMarks = 10;
 
-    static String ackCode = "Q8694";
-    static String nackCode = "R8666";
+    static String ackCode = "Q6936";
+    static String nackCode = "R8684";
 
     public static void main(String[] args) throws IOException {
         (new virtualModem()).demo();
@@ -59,9 +59,9 @@ public class virtualModem {
     public void demo() throws IOException {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss z");
         Date date;
-        modem.setSpeed(modemSpeed);
-        modem.setTimeout(timeout);
-        openModem(modem,modemName);
+        ithaki.setSpeed(modemSpeed);
+        ithaki.setTimeout(timeout);
+        openModem(ithaki,modemName);
 
         /*
          * Echo packet response times experiment
@@ -69,7 +69,7 @@ public class virtualModem {
         date = new Date(System.currentTimeMillis());
         System.out.println("Echo Packet experiment started: " + formatter.format(date));
 
-        echoPacketResponseTime(modem,echoCode + "\r",expTime);
+        echoPacketResponseTime(ithaki,echoCode + "\r",expTime);
 
         date = new Date(System.currentTimeMillis());
         System.out.println("Echo Packet experiment ended: " + formatter.format(date));
@@ -78,11 +78,11 @@ public class virtualModem {
          * Image request experiment
          */
         // Error free
-        modem.setSpeed(modemSpeedImage);
+        ithaki.setSpeed(modemSpeedImage);
         String imgLocation = folderLocation + imageCode + ".jpg";
         date = new Date(System.currentTimeMillis());
         System.out.println("Requesting error free image: " + formatter.format(date));
-        getImage(modem,imageCode,cam,dir,size,imgLocation);
+        getImage(ithaki,imageCode,cam,dir,size,imgLocation);
         date = new Date(System.currentTimeMillis());
         System.out.println("Image  received: " + formatter.format(date));
 
@@ -90,7 +90,7 @@ public class virtualModem {
         imgLocation = folderLocation + imageCodeErrors + ".jpg";
         date = new Date(System.currentTimeMillis());
         System.out.println("Requesting image with errors: " + formatter.format(date));
-        getImage(modem,imageCodeErrors,camErrors,dirErrors,sizeErrors,imgLocation);
+        getImage(ithaki,imageCodeErrors,camErrors,dirErrors,sizeErrors,imgLocation);
         date = new Date(System.currentTimeMillis());
         System.out.println("Image  received: " + formatter.format(date));
 
@@ -102,21 +102,21 @@ public class virtualModem {
         imgLocation = folderLocation + "gpsImage.jpg";
         date = new Date(System.currentTimeMillis());
         System.out.println("Requesting GPS route image: " + formatter.format(date));
-        getGPSMark(modem,gpsCode,R,imgLocation,numberOfMarks,timeBetweenMarks);
+        getGPSMark(ithaki,gpsCode,R,imgLocation,numberOfMarks,timeBetweenMarks);
         date = new Date(System.currentTimeMillis());
         System.out.println("Image  received: " + formatter.format(date));
 
         /*
          * Automatic repeat request
          */
-        modem.setSpeed(modemSpeed);
+        ithaki.setSpeed(modemSpeed);
         date = new Date(System.currentTimeMillis());
         System.out.println("Automatic Repeat experiment started: " + formatter.format(date));
-        arqPacketExperiment(modem,ackCode + "\r",nackCode + "\r",expTime);
+        arqPacketExperiment(ithaki,ackCode + "\r",nackCode + "\r",expTime);
         date = new Date(System.currentTimeMillis());
         System.out.println("Automatic Repeat Request experiment ended: " + formatter.format(date));
 
-        modem.close();
+        ithaki.close();
     }
     /**
      * Method that initializes a connection with the virtual modem
@@ -230,7 +230,7 @@ public class virtualModem {
     }
 
     /**
-     * Receives a requested image from the server
+     * Method that receives a requested image from the server and saves it locally
      * @param modem         a modem class
      * @param imgCode       the requested code
      * @param imgLocation   the location to store the image
@@ -325,7 +325,7 @@ public class virtualModem {
     }
 
     /**
-     *
+     * Method that requests gps marks from ithaki server
      * @param modem         a modem class
      * @param gpsCode       the requested gps code
      * @param R             route parameters
